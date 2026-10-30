@@ -68,14 +68,15 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Run on macOS only
-[ "$(uname -s)" != "Darwin" ] && echo "${RED}Error: macOS only${NC}" && exit 1
+# Run on macOS only, and requires Mavericks (10.9) or newer
+check_platform() {
+    [ "$(uname -s)" != "Darwin" ] && echo -e "${RED}Error: macOS only${NC}" && exit 1
 
-# Requires Mavericks (10.9) or newer to run this script
-if [ "$KERNEL_VERSION" -lt 13 ]; then
-  echo "${RED}Unsupported macOS version. Requires Mavericks (10.9) or newer${NC}"
-  exit 1
-fi
+    if [ "$KERNEL_VERSION" -lt 13 ]; then
+        echo "${RED}Unsupported macOS version. Requires Mavericks (10.9) or newer${NC}"
+        exit 1
+    fi
+}
 
 # Helper functions
 log_info() {
@@ -1386,21 +1387,8 @@ create_dmg_10_10_and_later() {
     mv -f "$WORK_DIR/installer.dmg" "$FINAL_OUTPUT_PATH"
 }
 
-# Main script
-main() {
-    echo -e "${BOLD}${CYAN}"
-    echo "╔══════════════════════════════════════════════════════════════════════════════╗"
-    echo "║ mkmaciso – the ultimate tool for creating macOS installer ISO and DMG images ║"
-    echo "╚══════════════════════════════════════════════════════════════════════════════╝"
-    echo -e "${NC}"
-    
-    # Check for availble disk space
-    check_disk_space
-    
-    # Require sudo
-    check_sudo_access
-    
-    # Validate image format (default to iso if empty, fallback to dmg if invalid input)
+# Validate image format: empty defaults to iso, anything other than iso or dmg is an error
+normalize_image_format() {
     IMAGE_FORMAT=$(echo "$IMAGE_FORMAT" | tr '[:upper:]' '[:lower:]')
     if [[ -z "$IMAGE_FORMAT" ]]; then
         IMAGE_FORMAT="iso"
@@ -1408,14 +1396,12 @@ main() {
         log_error "Invalid image format '$IMAGE_FORMAT'. Use 'iso' or 'dmg'"
         exit 1
     fi
-    
-    # Normalize version input
-    VERSION=$(echo "$VERSION" | tr '[:upper:]' '[:lower:]' | tr -d '_- ')
-    
-    # Determine if input is a codename or version number
-    VERSION_NUM=""
-    VERSION_NAME=""
-    
+}
+
+# Resolve VERSION (number or codename) into VERSION_NUM and VERSION_NAME, or exit with an error
+resolve_version() {
+    VERSION=$(echo "$VERSION" | tr '[:upper:]' '[:lower:]' | tr -d ' _-')
+
     # Try as version number first, then as codename
     if [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
         VERSION_NUM="$VERSION"
@@ -1434,6 +1420,24 @@ main() {
         log_info "Supported codenames: lion, mountain-lion, mavericks, yosemite, el-capitan, sierra, high-sierra, mojave, catalina, big-sur, monterey, ventura, sonoma, sequoia, tahoe"
         exit 1
     fi
+}
+
+# Main script
+main() {
+    echo -e "${BOLD}${CYAN}"
+    echo "╔══════════════════════════════════════════════════════════════════════════════╗"
+    echo "║ mkmaciso – the ultimate tool for creating macOS installer ISO and DMG images ║"
+    echo "╚══════════════════════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    # Check for availble disk space
+    check_disk_space
+    
+    # Require sudo
+    check_sudo_access
+    
+    normalize_image_format
+    resolve_version
     
     log_info "Target macOS:${GREEN} $VERSION_NAME ($VERSION_NUM) ${NC}"
     log_info "Image format:${GREEN} $(echo $IMAGE_FORMAT | tr '[:lower:]' '[:upper:]') ${NC}"
@@ -1556,6 +1560,11 @@ main() {
     fi
 }
 
+# Run the command line only when this file is executed directly.
+# Tests set MKMACISO_TEST=1 to load the functions without running anything.
+if [ -z "${MKMACISO_TEST:-}" ]; then
+check_platform
+
 # Show usage if -h or --help is passed
 if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     cat << 'EOF'
@@ -1613,5 +1622,6 @@ if [ $# -eq 0 ]; then
     run_interactive_menu
 fi
 
-# Run main function
 main
+fi
+
