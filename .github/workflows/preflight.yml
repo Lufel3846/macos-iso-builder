@@ -1,0 +1,23 @@
+name: Preflight
+
+# Shared gate for the build workflows, called via workflow_call.
+# The star requirement has been removed, so every run builds.
+
+on:
+  workflow_call:
+    outputs:
+      _build:
+        description: "true when the build job should run"
+        value: ${{ jobs.check.outputs._build }}
+
+jobs:
+  check:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    outputs:
+      _build: ${{ steps.check.outputs._build }}
+
+    steps:
+      - name: Preflight
+        id: check
+        run: echo "_build=true" >> $GITHUB_OUTPUT

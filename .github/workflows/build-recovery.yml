@@ -26,58 +26,7 @@ on:
 jobs:
   preflight:
     if: ${{ inputs.macos_version != '' }}
-    runs-on: ubuntu-slim
-    timeout-minutes: 5
-    outputs:
-      _build: ${{ steps.check.outputs._build }}
-
-    steps:
-      - name: Preflight
-        id: check
-        run: |
-          echo "_build=false" >> $GITHUB_OUTPUT
-          sum() { printf '%s\n' "$@" >> "$GITHUB_STEP_SUMMARY"; }
-
-          # Third time's the charm
-          if [ ${{ github.run_attempt }} -ge 3 ] || [ ${{ github.run_number }} -ge 3 ]; then
-            echo "_build=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Most users arrive directly at the Actions tab without reading the
-          # README, missing the prebuilt images in the Releases tab. Requiring
-          # a star (step 1 of the README) reduces redundant builds - and runner
-          # costs - for images that may already exist in a recent forks list.
-          #
-          # GET /repos/{owner}/{repo}/stargazers has been admin/collaborator
-          # only since 2026-06-30, and Actions' app-install token is refused
-          # even on its own repo ("Resource not accessible by integration").
-          # Ask the reverse question instead - is this repo in the actor's
-          # starred list - which is still unrestricted. Sorted newest-first,
-          # so a star made just before dispatching lands on page 1.
-          FOUND=false
-          PAGE=1
-          while [ $PAGE -le 5 ]; do
-            DATA=$(curl -s \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/users/${{ github.actor }}/starred?per_page=100&page=${PAGE}")
-            [ "$(echo "$DATA" | jq -r 'type')" = "array" ] || break
-            echo "$DATA" | jq -e 'any(.[]; .full_name == "LongQT-sea/macos-iso-builder")' > /dev/null && FOUND=true && break
-            [ "$(echo "$DATA" | jq 'length')" -lt 100 ] && break
-            PAGE=$((PAGE + 1))
-          done
-
-          if [ "$FOUND" = "true" ]; then
-            echo "_build=true" >> $GITHUB_OUTPUT
-          else
-            sum "## Before you build - check if someone already did it for you :point_down:" \
-                "" \
-                "Browse the **[Recent Forks List](https://github.com/LongQT-sea/macos-iso-builder/releases/latest)** - someone may have already built the macOS version you need." \
-                "" \
-                "If you still need to build your own, star this repo first [LongQT-sea/macos-iso-builder](https://github.com/LongQT-sea/macos-iso-builder) - that's step 1 in the [README](https://github.com/LongQT-sea/macos-iso-builder#how-to-use). :star:" \
-                "<br>![star](https://raw.githubusercontent.com/LongQT-sea/macos-iso-builder/main/.github/star.jpg)"
-          fi
+    uses: ./.github/workflows/preflight.yml
 
   build-recovery-iso:
     needs: preflight
@@ -106,13 +55,18 @@ jobs:
 
       - name: Download macrecovery.py
         run: |
+          # Pinned to a commit and verified by checksum, so an upstream change cannot alter the build
+          MACRECOVERY_SHA256="3023a9b4ca79a5255d93c00f25ab5df37e6f938b729b797d9ecea56184b17aff"
           echo "Downloading macrecovery.py from acidanthera/OpenCorePkg..."
-          curl --retry 3 --max-time 10 --connect-timeout 3 -OL "https://raw.githubusercontent.com/acidanthera/OpenCorePkg/master/Utilities/macrecovery/macrecovery.py"
+          curl --fail --retry 3 --max-time 10 --connect-timeout 3 -OL "https://raw.githubusercontent.com/acidanthera/OpenCorePkg/78d5ff824992d5b227f842e34d8221eb8f31baf1/Utilities/macrecovery/macrecovery.py"
+          echo "$MACRECOVERY_SHA256  macrecovery.py" | shasum -a 256 -c -
 
       - name: Get version info
         id: version_info
+        env:
+          MACOS_VERSION: ${{ github.event.inputs.macos_version }}
         run: |
-          case "${{ github.event.inputs.macos_version }}" in
+          case "$MACOS_VERSION" in
             "High Sierra") KEY="high_sierra1" ;;
             "Mojave") KEY="mojave" ;;
             "Catalina") KEY="catalina1" ;;
