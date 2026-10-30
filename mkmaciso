@@ -613,7 +613,8 @@ download_legacy_macos() {
     
     log_info "Downloading macOS $(get_codename $version_num)..."
     # If download does not finish within 30 minutes (--max-time 1800), redownload to establish a new connection.
-    curl --retry 5 --max-time 1800 --connect-timeout 10 --progress-bar -L "$download_url" -o "$WORK_DIR/InstallMacOSX.dmg"
+    # -C - resumes a partial file when a retry happens, so a dropped connection does not restart the download
+    curl --retry 5 -C - --max-time 1800 --connect-timeout 10 --progress-bar -L "$download_url" -o "$WORK_DIR/InstallMacOSX.dmg"
 }
 
 # macOS 10.9 Mavericks requires special handling:
@@ -787,7 +788,7 @@ direct_download_10_13_10_15() {
     # Download all required files
     for filename in "${files[@]}"; do
         log_info "Downloading ${filename}..."
-        curl --retry 5 --max-time 1800 --connect-timeout 10 --progress-bar \
+        curl --retry 5 -C - --max-time 1800 --connect-timeout 10 --progress-bar \
             -L "${base_url}${filename}" -o "$WORK_DIR/${filename}"
         if [ $? -ne 0 ]; then
             log_error "Failed to download ${filename}"
@@ -1524,10 +1525,17 @@ main() {
             exit 1
         fi
         
+        # Write a SHA-256 checksum next to the image so users can verify it
+        local checksum
+        checksum=$(shasum -a 256 "$FINAL_OUTPUT_PATH" | awk '{print $1}')
+        echo "$checksum  $(basename "$FINAL_OUTPUT_PATH")" > "$FINAL_OUTPUT_PATH.sha256"
+
         echo ""
         log_info "Successfully created installer image!"
         log_info "File: $FINAL_OUTPUT_PATH"
         log_info "Size: $FILE_SIZE_GB"
+        log_info "SHA-256: $checksum"
+        log_info "Checksum file: $FINAL_OUTPUT_PATH.sha256"
         echo ""
         
         if [ "$IMAGE_FORMAT" == "iso" ]; then

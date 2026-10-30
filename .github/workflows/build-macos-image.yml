@@ -103,6 +103,8 @@ jobs:
                   '> This DMG image is intended for flashing to USB drive using [Rufus](https://rufus.ie/en/#download) *(Windows)* or `dd` *(Linux)*.'
             fi
             sum "" \
-                "> [!TIP]" \
+                "SHA-256: \`$(cut -d' ' -f1 ./*.sha256)\`" \
+                ""
+            sum "> [!TIP]" \
                 "> Enable [Cloudflare WARP](https://one.one.one.one/) for faster download from GitHub artifact."
           fi
