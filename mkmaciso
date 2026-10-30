@@ -1404,8 +1404,8 @@ main() {
     if [[ -z "$IMAGE_FORMAT" ]]; then
         IMAGE_FORMAT="iso"
     elif [[ "$IMAGE_FORMAT" != "iso" && "$IMAGE_FORMAT" != "dmg" ]]; then
-        log_warn "Invalid image format '$IMAGE_FORMAT'; falling back to dmg"
-        IMAGE_FORMAT="dmg"
+        log_error "Invalid image format '$IMAGE_FORMAT'. Use 'iso' or 'dmg'"
+        exit 1
     fi
     
     # Normalize version input
