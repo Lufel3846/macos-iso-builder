@@ -106,13 +106,18 @@ jobs:
 
       - name: Download macrecovery.py
         run: |
+          # Pinned to a commit and verified by checksum, so an upstream change cannot alter the build
+          MACRECOVERY_SHA256="3023a9b4ca79a5255d93c00f25ab5df37e6f938b729b797d9ecea56184b17aff"
           echo "Downloading macrecovery.py from acidanthera/OpenCorePkg..."
-          curl --retry 3 --max-time 10 --connect-timeout 3 -OL "https://raw.githubusercontent.com/acidanthera/OpenCorePkg/master/Utilities/macrecovery/macrecovery.py"
+          curl --fail --retry 3 --max-time 10 --connect-timeout 3 -OL "https://raw.githubusercontent.com/acidanthera/OpenCorePkg/78d5ff824992d5b227f842e34d8221eb8f31baf1/Utilities/macrecovery/macrecovery.py"
+          echo "$MACRECOVERY_SHA256  macrecovery.py" | shasum -a 256 -c -
 
       - name: Get version info
         id: version_info
+        env:
+          MACOS_VERSION: ${{ github.event.inputs.macos_version }}
         run: |
-          case "${{ github.event.inputs.macos_version }}" in
+          case "$MACOS_VERSION" in
             "High Sierra") KEY="high_sierra1" ;;
             "Mojave") KEY="mojave" ;;
             "Catalina") KEY="catalina1" ;;

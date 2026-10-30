@@ -112,9 +112,12 @@ jobs:
 
       - name: Create macOS image
         id: create_image
+        env:
+          MACOS_VERSION: ${{ inputs.macos_version }}
+          IMAGE_FORMAT: ${{ inputs.image_format }}
         run: |
-          ./mkmaciso "${{ inputs.macos_version }}" "${{ inputs.image_format }}"
-          if [ "${{ inputs.image_format }}" == "iso" ]; then
+          ./mkmaciso "$MACOS_VERSION" "$IMAGE_FORMAT"
+          if [ "$IMAGE_FORMAT" == "iso" ]; then
             echo "image_name=$(basename *.iso)" >> $GITHUB_OUTPUT
           else
             echo "image_name=$(basename *.dmg.img)" >> $GITHUB_OUTPUT
