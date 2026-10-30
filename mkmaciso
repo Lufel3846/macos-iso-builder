@@ -315,9 +315,7 @@ show_version_menu() {
     
     local i
     i=1
-    local col
-    col=0
-    
+
     # Print versions in two columns
     echo -e "  ${BOLD}#   Version    Name              Year${NC}    ${BOLD}#   Version    Name              Year${NC}"
     print_separator
@@ -849,6 +847,7 @@ direct_download_10_13_10_15() {
 download_modern_macos() {
     local version_num
     version_num="$1"
+    local version_name
     version_name=$(get_codename $version_num)
     version_name="${version_name/_/ }"
     
@@ -904,7 +903,7 @@ download_modern_macos() {
     fi
     
     log_info "Fetching available macOS installers..."
-    softwareupdate --list-full-installers 2>/dev/null | grep "* Title:" | sed 's/^[[:space:]]*//' > "$WORK_DIR/installers.txt"
+    softwareupdate --list-full-installers 2>/dev/null | grep -F "* Title:" | sed 's/^[[:space:]]*//' > "$WORK_DIR/installers.txt"
     
     # Get latest installer version
     local selected_version_number
@@ -1219,7 +1218,7 @@ create_iso_10_12_and_later() {
     
     # Create sparse image
     hdiutil create -quiet -size 20g -volname "$(get_codename $version_num)_iso" -fs HFS+ -type SPARSE -attach "$WORK_DIR/installer.sparseimage"
-    DISK_ID=$(diskutil list | grep $(get_codename $version_num)_iso | head -1 | awk '{print $NF}' | sed 's/s[0-9]*$//')
+    DISK_ID=$(diskutil list | grep "$(get_codename $version_num)_iso" | head -1 | awk '{print $NF}' | sed 's/s[0-9]*$//')
     
     # Prepare createinstallmedia command
     local cmd
@@ -1310,7 +1309,7 @@ create_dmg_10_10_and_later() {
     
     # Create DMG disk image
     hdiutil create -quiet -size $dmg_size -volname "$(get_codename $version_num)_dmg" -fs HFS+ -type UDIF -attach "$WORK_DIR/installer.dmg"
-    DISK_ID=$(diskutil list | grep $(get_codename $version_num)_dmg | head -1 | awk '{print $NF}' | sed 's/s[0-9]*$//')
+    DISK_ID=$(diskutil list | grep "$(get_codename $version_num)_dmg" | head -1 | awk '{print $NF}' | sed 's/s[0-9]*$//')
     
     # Prepare createinstallmedia command
     local cmd
